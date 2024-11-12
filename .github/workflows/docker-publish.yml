@@ -1,0 +1,30 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'  # 只在以 v 开头的标签推送时触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Log in to GitHub Packages
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+    - name: Build Docker image
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}  # 去掉 refs/tags/ 前缀
+        docker build -t ghcr.io/${{ github.repository }}/lo:$TAG -f docker/Dockerfile docker/
+
+    - name: Push Docker image
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}  # 去掉 refs/tags/ 前缀
+        docker push ghcr.io/${{ github.repository }}/lo:$TAG
