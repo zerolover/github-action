@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     tags:
-      - 'v*'  # 只在以 v 开头的标签推送时触发
+      - 'docker_v*'  # 只在以 docker_v 开头的标签推送时触发
 
 jobs:
   build:
