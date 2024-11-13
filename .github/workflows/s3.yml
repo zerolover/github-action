@@ -1,0 +1,52 @@
+name: test s3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: test
+      run: |
+        C:\msys64\usr\bin\pacman.exe -S bison flex gperf libxslt
+        C:\msys64\usr\bin\bison.exe --version
+        C:\msys64\usr\bin\gperf.exe --version
+        C:\msys64\usr\bin\xsltproc.exe --version
+
+
+    # - name: test
+    #   run: |
+    #     C:\msys64\usr\bin\wget.exe -q https://github.com/zerolover/github-action/releases/download/v24.8.x/deps_win_libreoffice-24-8_e52e364.tar.xz -O deps.tar.xz
+    #     mkdir dolphin
+    #     C:\msys64\usr\bin\tar.exe -xJf deps.tar.xz -C dolphin
+    #     7z a -t7z -m0=lzma2 test.7z dolphin
+    #     C:\msys64\usr\bin\tar.exe -I "zstd -T0 -6 -k" -cf test.tzst dolphin
+    #     mkdir ddd
+    #     C:\msys64\usr\bin\tar.exe -I "zstd -d" -xf test.tzst -C ddd
+    #     ls
+    
+    # - name: Install ccache
+    #   run: |
+    #     choco install ccache -y
+
+    # - uses: ynab/system-info-action@v1.3
+    #   id: system-info
+    # - name: debug
+    #   run: |
+    #     echo "System Info:"
+    #     echo "CPU Core: ${{ steps.system-info.outputs.cpu-core }}"
+    #     echo "CPU Model: ${{ steps.system-info.outputs.cpu-model }}"
+    #     echo "Hostname: ${{ steps.system-info.outputs.hostname }}"
+    #     echo "Kernel Release: ${{ steps.system-info.outputs.kernel-release }}"
+    #     echo "Kernel Version: ${{ steps.system-info.outputs.kernel-version }}"
+    #     echo "Name: ${{ steps.system-info.outputs.name }}"
+    #     echo "Platform: ${{ steps.system-info.outputs.platform }}"
+    #     echo "Release: ${{ steps.system-info.outputs.release }}"
+    #     echo "Total Memory: ${{ steps.system-info.outputs.totalmem }}"

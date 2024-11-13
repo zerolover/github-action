@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Branch to build'
         required: true
-        default: 'master'
+        default: 'libreoffice-24-8'
       release_tag:
         description: 'Existing Release tag to upload to'
         required: true
@@ -19,18 +19,14 @@ jobs:
 
     steps:
     - name: Check if Release tag exists
-      id: check_release
-      run: |
-        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.inputs.release_tag }}")
-        if [ "$RESPONSE" -ne 200 ]; then
-          echo "Release tag not found: ${{ github.event.inputs.release_tag }}"
-          exit 1
-        else
-          echo "Release tag exists: ${{ github.event.inputs.release_tag }}"
-        fi
+      uses: mukunku/tag-exists-action@v1.6.0
+      id: check-tag
+      with: 
+        tag: 'v24.8.x'
+
+    - name: Release tag not exists
+      run: echo "Tag does not exist, exiting..." && exit 1
+      if: steps.check-tag.outputs.exists != 'true'
 
     - name: Check out code
       uses: actions/checkout@v4
@@ -45,34 +41,36 @@ jobs:
         cd core
         echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
+    - name: Cache tarballs
+      id: cache_tarballs
+      uses: actions/cache@v4
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        path: core/external/tarballs
+        key: tarballs-${{ hashFiles('core/download.lst') }}
+        restore-keys: |
+          tarballs-
+        enableCrossOsArchive: true
 
     - name: Pull Docker image
       run: |
-        docker pull ghcr.io/zerolover/github-action/lo:v0.1
+        docker pull ghcr.io/zerolover/github-action/lo:dev
 
     - name: Compile
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          ghcr.io/zerolover/github-action/lo:v0.1 \
+          ghcr.io/zerolover/github-action/lo:dev \
           /bin/bash /workspace/script/build-deps-ubuntu.sh
 
     - name: Compress the output
       run: |
-        tar -cJf deps_ubuntu_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz deps/
+        tar -I "xz -T0" -cf deps_ubuntu_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz deps/
 
     - name: Upload build artifacts to Existing Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ github.event.inputs.release_tag }}
         files: deps_ubuntu_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
-        overwrite: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

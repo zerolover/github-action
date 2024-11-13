@@ -1,0 +1,90 @@
+name: Build Dolphin (Ubuntu)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cache_to_S3:
+        description: 'Upload cache to S3'
+        required: true
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Download and extract source
+      run: |
+        aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        aws s3 cp s3://dolphin/source/workdir_ubuntu.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        wget https://github.com/zerolover/github-action/releases/download/v24.8.x/deps_ubuntu_libreoffice-24-8_e52e364.tar.xz -O deps.tar.xz > /dev/null 2>&1
+        tar -xJf dolphin.tar.xz 2>&1
+        tar -xJf workdir_ubuntu.tar.xz -C dolphin > /dev/null 2>&1
+        tar -xJf deps.tar.xz -C dolphin > /dev/null 2>&1
+
+    - name: Cache ccache
+      id: cache_ccache
+      uses: actions/cache@v4
+      with:
+        path: .ccache
+        key: ccache-${{ runner.os }}
+        restore-keys: |
+          ccache-${{ runner.os }}
+
+    - name: Cache from S3
+      if: steps.cache_ccache.outputs.cache-hit != 'true'
+      run: |
+        if aws s3api head-object --bucket dolphin --key cache/ccache-${{ runner.os }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} > /dev/null 2>&1; then
+          echo "Cache exists in S3, downloading..."
+          aws s3 cp s3://dolphin/cache/ccache-${{ runner.os }}.tzst ccache.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+          tar -I unzstd -xf ccache.tzst
+        else
+          echo "Cache does not exist in S3"
+        fi
+
+    - name: Pull Docker image
+      run: |
+        docker pull ghcr.io/zerolover/github-action/lo:base
+
+    - name: Compile
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          ghcr.io/zerolover/github-action/lo:base \
+          sh -c "ccache --set-config=cache_dir=/workspace/.ccache && ccache -sv && \
+            cd dolphin && mkdir build && cd build && cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && \
+            ninja && ninja install"
+
+    - name: Cleanup cache
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          ghcr.io/zerolover/github-action/lo:base \
+          sh -c "ccache --set-config=cache_dir=/workspace/.ccache && ccache -sv && \
+            ccache --evict-older-than 30d && ccache -sv"
+
+    - name: Upload cache to S3
+      if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
+      run: |
+        tar -I "zstdmt -6 -k" -cf ccache-${{ runner.os }}.tzst .ccache
+        aws s3 cp ccache-${{ runner.os }}.tzst s3://dolphin/cache/ccache-${{ runner.os }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+
+    - name: Compress the output
+      run: |
+        tar -I "xz -T0" -cf dolphin-linux.tar.xz -C dolphin/build program
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dolphin-linux.tar.xz
+        path: dolphin-linux.tar.xz

@@ -1,0 +1,99 @@
+name: Build Dolphin (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cache_to_S3:
+        description: 'Upload cache to S3'
+        required: true
+        default: false
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Download and extract source
+      run: |
+        echo "Downloading..."
+        aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        aws s3 cp s3://dolphin/source/workdir_win.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        C:\msys64\usr\bin\wget -q https://github.com/zerolover/github-action/releases/download/v24.8.x/deps_win_libreoffice-24-8_e52e364.tar.xz -O deps.tar.xz
+        echo "Extracting..."
+        C:\msys64\usr\bin\tar.exe -xJf dolphin.tar.xz
+        C:\msys64\usr\bin\tar.exe -xJf workdir_win.tar.xz -C dolphin
+        C:\msys64\usr\bin\tar.exe -xJf deps.tar.xz -C dolphin
+
+    - name: Cache ccache
+      id: cache_ccache
+      uses: actions/cache@v4
+      with:
+        path: .ccache
+        key: ccache-${{ runner.os }}
+        restore-keys: |
+          ccache-${{ runner.os }}
+
+    - name: Cache from S3
+      if: steps.cache_ccache.outputs.cache-hit != 'true'
+      run: |
+        aws s3api head-object --bucket dolphin --key cache/ccache-${{ runner.os }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          echo "Cache exists in S3, downloading..."
+          aws s3 cp s3://dolphin/cache/ccache-${{ runner.os }}.tzst ccache.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+          C:\msys64\usr\bin\tar.exe -I "zstd -d" -xf ccache.tzst
+        } else {
+          echo "Cache does not exist in S3"
+          exit 0
+        }
+
+    - name: Install ccache and ninja
+      run: |
+        choco install ccache --version 4.10.2 -y --no-progress
+        choco install ninja --version 1.12.1 -y --no-progress
+        ccache --set-config=cache_dir="$env:GITHUB_WORKSPACE\.ccache"
+        ccache -sv
+
+    - name: Enable Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Compile
+      run: |
+        cd dolphin
+        mkdir build
+        cd build
+        cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        ninja
+        ninja install
+
+    - name: Cleanup cache
+      run: |
+        ccache -sv
+        ccache --evict-older-than 30d
+        ccache -sv
+
+    - name: Upload cache to S3
+      if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
+      run: |
+        C:\msys64\usr\bin\tar.exe -I "zstd -T0 -6 -k" -cf ccache-${{ runner.os }}.tzst .ccache
+        aws s3 cp ccache-${{ runner.os }}.tzst s3://dolphin/cache/ccache-${{ runner.os }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+
+    - name: Compress the output
+      run: |
+        cd dolphin/build
+        7z a -t7z dolphin-win.7z program
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dolphin-win.7z
+        path: dolphin/build/dolphin-win.7z
