@@ -3,7 +3,7 @@ set -e
 
 ROOT=/workspace
 LO=$ROOT/core
-DP=$ROOT/dolphin
+DP=$ROOT/deps
 
 cd $LO
 ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update
