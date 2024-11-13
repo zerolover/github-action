@@ -73,6 +73,5 @@ jobs:
       with:
         tag_name: ${{ github.event.inputs.release_tag }}
         files: deps_ubuntu_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
-        overwrite: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
