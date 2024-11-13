@@ -13,11 +13,15 @@ make boost
 make box2d
 make curl
 make dtoa
+make epoxy
 make expat
 make harfbuzz
 make libtiff
 make zxing
 make zxcvbn-c
+
+ls -alh $LO/workdir/UnpackedTarball/
+ls -alh $LO/instdir/program/
 
 cd $ROOT
 mkdir -p $DP/libs

@@ -45,12 +45,15 @@ jobs:
         cd core
         echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
+    - name: Cache tarballs
+      id: cache_tarballs
+      uses: actions/cache@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        path: core/external/tarballs
+        key: tarballs-${{ hashFiles('core/download.lst') }}
+        restore-keys: |
+          tarballs-
+        enableCrossOsArchive: true
 
     - name: Pull Docker image
       run: |
@@ -73,6 +76,5 @@ jobs:
       with:
         tag_name: ${{ github.event.inputs.release_tag }}
         files: deps_ubuntu_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
-        overwrite: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
