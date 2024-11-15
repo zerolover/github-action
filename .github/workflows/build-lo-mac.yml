@@ -1,0 +1,65 @@
+name: Build LibreOffice (Mac)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'master'
+
+jobs:
+  build:
+    runs-on: macos-13
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install autoconf automake make libtool gettext nasm flex gperf
+        echo "/opt/homebrew/opt/make/libexec/gnubin" >> $GITHUB_PATH
+        echo "/opt/homebrew/opt/libtool/libexec/gnubin" >> $GITHUB_PATH
+        echo "/opt/homebrew/opt/flex/bin" >> $GITHUB_PATH
+
+    - name: List installed packages
+      run: |
+        brew list
+        which autoconf
+        which automake
+        which make
+        which libtool
+        which gettext
+        which nasm
+        which flex
+        which gperf
+
+    # - name: Clone Libreoffice
+    #   run: |
+    #     git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+
+    # - name: Get latest commit ID
+    #   id: get_commit_id
+    #   run: |
+    #     cd core
+    #     echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
+
+
+    # - name: Build LibreOffice
+    #   run: |
+    #     cd core
+    #     ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --enable-bogus-pkg-config
+    #     make
+
+    # - name: Compress the output
+    #   run: |
+    #     tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz core/instdir
+
+    # - name: Upload build artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
+    #     path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
