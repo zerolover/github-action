@@ -21,13 +21,15 @@ jobs:
     - name: Install dependencies
       run: |
         brew install autoconf automake make libtool gettext nasm flex gperf
-        echo "/opt/homebrew/opt/make/libexec/gnubin" >> $GITHUB_PATH
-        echo "/opt/homebrew/opt/libtool/libexec/gnubin" >> $GITHUB_PATH
-        echo "/opt/homebrew/opt/flex/bin" >> $GITHUB_PATH
-
+        HOMEBREW_PREFIX=$(brew --prefix)
+        echo $HOMEBREW_PREFIX
+        echo "$HOMEBREW_PREFIX/opt/make/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/libtool/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/flex/bin" >> $GITHUB_PATH
+  
     - name: List installed packages
       run: |
-        brew list
+        brew list --versions autoconf automake make libtool gettext nasm flex gperf
         which autoconf
         which automake
         which make
@@ -36,6 +38,14 @@ jobs:
         which nasm
         which flex
         which gperf
+        autoconf --version | head -1
+        automake --version | head -1
+        make --version | head -1
+        libtool --version | head -1
+        gettext --version | head -1
+        nasm --version | head -1
+        flex --version | head -1
+        gperf --version | head -1
 
     # - name: Clone Libreoffice
     #   run: |
