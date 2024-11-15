@@ -47,29 +47,29 @@ jobs:
         flex --version | head -1
         gperf --version | head -1
 
-    # - name: Clone Libreoffice
-    #   run: |
-    #     git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+    - name: Clone Libreoffice
+      run: |
+        git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
 
-    # - name: Get latest commit ID
-    #   id: get_commit_id
-    #   run: |
-    #     cd core
-    #     echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
+    - name: Get latest commit ID
+      id: get_commit_id
+      run: |
+        cd core
+        echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
 
 
-    # - name: Build LibreOffice
-    #   run: |
-    #     cd core
-    #     ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --enable-bogus-pkg-config
-    #     make
+    - name: Build LibreOffice
+      run: |
+        cd core
+        ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --enable-bogus-pkg-config
+        make
 
-    # - name: Compress the output
-    #   run: |
-    #     tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz core/instdir
+    - name: Compress the output
+      run: |
+        tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz core/instdir
 
-    # - name: Upload build artifacts
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
-    #     path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
+        path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
