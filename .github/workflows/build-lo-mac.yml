@@ -57,6 +57,15 @@ jobs:
         cd core
         echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
 
+    - name: Cache tarballs
+      id: cache_tarballs
+      uses: actions/cache@v3
+      with:
+        path: core/external/tarballs
+        key: tarballs-${{ hashFiles('core/download.lst') }}
+        restore-keys: |
+          tarballs-
+        enableCrossOsArchive: true
 
     - name: Build LibreOffice
       run: |

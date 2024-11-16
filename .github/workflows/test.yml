@@ -1,0 +1,72 @@
+name: test (Win)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'master'
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Clone Libreoffice on D
+      run: |
+        cd D:
+        git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+
+    - name: Clone Libreoffice on C
+      run: |
+        cd c:
+        git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+
+    # - name: Cache tarballs
+    #   id: cache_tarballs
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: core/external/tarballs
+    #     key: tarballs-windows
+    #     restore-keys: |
+    #       tarballs-
+    #     enableCrossOsArchive: true
+
+    # - name: Print current directory
+    #   run: |
+    #     echo Current Directory:
+    #     pwd
+
+    # - name: list cache
+    #   run: dir core\external\tarballs
+
+    # - name: clone zsh
+    #   run: |
+    #     cd C:\
+    #     git clone --depth 1 https://github.com/zsh-users/zsh.git
+
+    # - name: Get latest commit ID
+    #   id: get_commit_id
+    #   run: |
+    #     cd C:\zsh
+    #     $commitId = git rev-parse HEAD
+    #     $shortCommitId = $commitId.Substring(0, 7)
+    #     echo "commit_id=$shortCommitId" >> $env:GITHUB_ENV
+    #   shell: pwsh
+
+    # - name: Output commit ID
+    #   run: |
+    #     echo $env:GITHUB_ENV
+    #   shell: pwsh
+
+    # - name: Upload build artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: zsh_${{ env.commit_id }}
+    #     path: C:\zsh
