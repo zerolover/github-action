@@ -36,10 +36,9 @@ jobs:
       uses: egor-tensin/setup-cygwin@v4
       with:
         install-dir: D:\cygwin
-        packages: openssl wget
+        packages: openssh openssl wget curl
 
     - name: Set up build environment
-      if: steps.cache-cygwin.outputs.cache-hit != 'true'
       run: |
         basic() {
           rm /packages -rf # remove cygwin cache packages

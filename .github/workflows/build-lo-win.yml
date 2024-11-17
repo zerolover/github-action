@@ -110,8 +110,9 @@ jobs:
       run: |
         basic() {
           cd /
-          tar -cJf lo.tar.xz core/instdir
+          tar -cJf lo.tar.xz /core/instdir
         }
+        basic
       shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
 
     - name: Upload build artifacts
