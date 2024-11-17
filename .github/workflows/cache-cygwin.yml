@@ -32,6 +32,12 @@ jobs:
         install-dir: D:\cygwin
         packages: autoconf automake bison cabextract flex gcc-g++ gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String
 
+    - name: Set up Cygwin for ssh
+      uses: egor-tensin/setup-cygwin@v4
+      with:
+        install-dir: D:\cygwin
+        packages: openssl wget
+
     - name: Set up build environment
       if: steps.cache-cygwin.outputs.cache-hit != 'true'
       run: |
@@ -39,7 +45,7 @@ jobs:
           rm /packages -rf # remove cygwin cache packages
           mkdir -p /opt/lo/bin
           cd /opt/lo/bin
-          wget --secure-protocol tlsv1 https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
+          wget https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
           cp make-4.2.1-msvc.exe make
           chmod +x make
         }
