@@ -31,6 +31,11 @@ jobs:
         curl -o "$HOME/bin/make.exe" https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
       shell: pwsh
 
+    - uses: shogo82148/actions-setup-perl@v1
+      with:
+        perl-version: "5.32"
+        distribution: strawberry
+
     - name: Clone Libreoffice
       run: |
         git config --global core.autocrlf false
