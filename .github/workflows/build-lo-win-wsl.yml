@@ -1,0 +1,75 @@
+name: Build LibreOffice (Win-WSL)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'master'
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up WSL
+      uses: Vampire/setup-wsl@v3
+      with:
+        use-cache: 'true'
+        additional-packages:
+          libfont-ttf-perl patch pkg-config automake make zip gperf bison nasm flex
+
+    - name: Set up build environment
+      run: |
+        mkdir -p ~/bin
+        curl -o ~/bin/make.exe https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
+      shell: pwsh
+
+    - name: Clone Libreoffice
+      run: |
+        git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+      shell: pwsh
+
+    - name: Get latest commit ID
+      run: |
+        cd core
+        $commitId = git rev-parse HEAD
+        $shortCommitId = $commitId.Substring(0, 7)
+        echo "commit_id=$shortCommitId" >> $env:GITHUB_ENV
+      shell: pwsh
+
+    # - name: Cache tarballs
+    #   id: cache_tarballs
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: core/external/tarballs
+    #     key: tarballs-windows
+    #     restore-keys: |
+    #       tarballs-
+    #     enableCrossOsArchive: true
+
+    - name: Build LibreOffice
+      run: |
+        wsl ./autogen.sh --with-visual-studio=2019 --without-lxml --without-java --without-doxygen --without-help --disable-online-update --host=x86_64-pc-cygwin --enable-python=fully-internal
+      shell: pwsh
+
+    # - name: Compress the output
+    #   run: |
+    #     basic() {
+    #       cd /
+    #       tar -cJf lo.tar.xz /core/instdir
+    #     }
+    #     basic
+    #   shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    # - name: Upload build artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: lo_win_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
+    #     path: D:\cygwin\lo.tar.xz
