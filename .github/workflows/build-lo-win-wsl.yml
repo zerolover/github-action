@@ -27,8 +27,8 @@ jobs:
 
     - name: Set up build environment
       run: |
-        mkdir -p ~/bin
-        curl -o ~/bin/make.exe https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
+        New-Item -ItemType Directory -Path "$HOME/bin" -Force
+        curl -o "$HOME/bin/make.exe" https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
       shell: pwsh
 
     - name: Clone Libreoffice
