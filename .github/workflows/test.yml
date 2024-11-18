@@ -42,13 +42,17 @@ jobs:
           nasm --version | head -1 || echo "nasm version not found"
           flex --version | head -1 || echo "flex version not found"
           gperf --version | head -1 || echo "gperf version not found"
-          perl --version | head -1 || echo "perl version not found"
+          perl --version || echo "perl version not found"
       shell: wsl-bash {0}
 
     - name: test_pwsh
       run: |
+        echo "Hello, world!"
         pwd
         cd
+        echo "Hello, world!"
         pwd
-        wsl ls
+        echo "Hello, world!"
+        wsl pwd
+        wsl nasm --version
       shell: pwsh
