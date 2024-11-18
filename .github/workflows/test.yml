@@ -21,7 +21,7 @@ jobs:
     - name: Set up WSL
       uses: Vampire/setup-wsl@v3
       with:
-        use-cache: 'false'
+        use-cache: 'true'
         additional-packages:
           libfont-ttf-perl patch pkg-config automake make zip gperf bison nasm flex
 
