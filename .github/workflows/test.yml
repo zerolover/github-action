@@ -44,3 +44,11 @@ jobs:
           gperf --version | head -1 || echo "gperf version not found"
           perl --version | head -1 || echo "perl version not found"
       shell: wsl-bash {0}
+
+    - name: test_pwsh
+      run: |
+        pwd
+        cd
+        pwd
+        wsl ls
+      shell: pwsh
