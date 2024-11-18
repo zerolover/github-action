@@ -27,9 +27,18 @@ jobs:
 
     - name: debug
       run: |
-          pwd
-          ls -al
-          ls -al /mnt
-          ls -al /mnt/c
-          ls -al /mnt/d
+          which autoconf || echo "autoconf not found"
+          which automake || echo "automake not found"
+          which make || echo "make not found"
+          which gettext || echo "gettext not found"
+          which nasm || echo "nasm not found"
+          which flex || echo "flex not found"
+          which gperf || echo "gperf not found"
+          autoconf --version | head -1 || echo "autoconf version not found"
+          automake --version | head -1 || echo "automake version not found"
+          make --version | head -1 || echo "make version not found"
+          gettext --version | head -1 || echo "gettext version not found"
+          nasm --version | head -1 || echo "nasm version not found"
+          flex --version | head -1 || echo "flex version not found"
+          gperf --version | head -1 || echo "gperf version not found"
       shell: wsl-bash {0}
