@@ -33,6 +33,7 @@ jobs:
 
     - name: Clone Libreoffice
       run: |
+        git config --global core.autocrlf false
         git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
       shell: pwsh
 
