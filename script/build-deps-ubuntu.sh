@@ -6,7 +6,7 @@ LO=$ROOT/core
 DP=$ROOT/deps
 
 cd $LO
-./autogen.sh --without-java --without-doxygen --without-help --disable-online-update
+./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --disable-ccache
 make fetch
 make UnpackedTarball
 make boost
