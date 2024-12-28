@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Branch to build'
         required: true
-        default: 'master'
+        default: 'libreoffice-24-8'
       release_tag:
         description: 'Existing Release tag to upload to'
         required: true
@@ -47,7 +47,7 @@ jobs:
 
     - name: Cache tarballs
       id: cache_tarballs
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: core/external/tarballs
         key: tarballs-${{ hashFiles('core/download.lst') }}
@@ -57,14 +57,14 @@ jobs:
 
     - name: Pull Docker image
       run: |
-        docker pull ghcr.io/zerolover/github-action/lo:v0.1
+        docker pull ghcr.io/zerolover/github-action/lo:base
 
     - name: Compile
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          ghcr.io/zerolover/github-action/lo:v0.1 \
+          ghcr.io/zerolover/github-action/lo:base \
           /bin/bash /workspace/script/build-deps-ubuntu.sh
 
     - name: Compress the output
