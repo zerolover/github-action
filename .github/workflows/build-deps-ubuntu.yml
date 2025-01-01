@@ -57,14 +57,14 @@ jobs:
 
     - name: Pull Docker image
       run: |
-        docker pull ghcr.io/zerolover/github-action/lo:base
+        docker pull ghcr.io/zerolover/github-action/lo:dev
 
     - name: Compile
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          ghcr.io/zerolover/github-action/lo:base \
+          ghcr.io/zerolover/github-action/lo:dev \
           /bin/bash /workspace/script/build-deps-ubuntu.sh
 
     - name: Compress the output

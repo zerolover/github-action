@@ -2,11 +2,6 @@ name: Cache Cygwin (Win)
 
 on:
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to build'
-        required: true
-        default: 'master'
 
 jobs:
   build:
@@ -30,15 +25,16 @@ jobs:
       uses: egor-tensin/setup-cygwin@v4
       with:
         install-dir: D:\cygwin
-        packages: autoconf automake bison cabextract flex gcc-g++ gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String
+        packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String dos2unix zstd
 
     - name: Set up build environment
       run: |
         basic() {
-          rm /packages -rf # remove cygwin cache packages
+          rm /packages /http* -rf # remove cygwin cache packages
+          echo "secure_protocol = TLSv1" | tee /etc/wgetrc > /dev/null
           mkdir -p /opt/lo/bin
           cd /opt/lo/bin
-          wget --secure-protocol tlsv1 https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
+          wget https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
           cp make-4.2.1-msvc.exe make
           chmod +x make
         }
@@ -67,18 +63,7 @@ jobs:
         basic
       shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
 
-    - name: Compress the output
-      run: |
-        basic() {
-          cd /
-          tar -cJf etc.tar.xz etc
-          pwd && ls
-        }
-        basic
-      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
-
-    # - name: Upload build artifacts
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: etc_${{ github.event.inputs.branch }}.tar.xz
-    #     path: D:\cygwin\etc.tar.xz
+    # - name: Debug
+    #   run: |
+    #     Get-ChildItem -Path "D:\cygwin" -Recurse -File | Select-Object FullName
+    #   shell: pwsh

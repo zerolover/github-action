@@ -1,4 +1,4 @@
-name: Build and Push Docker Image (Dev)
+name: Build and Push Docker Image (base)
 
 on:
   workflow_dispatch:
@@ -19,8 +19,8 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t ghcr.io/${{ github.repository }}/lo:dev -f docker/Dockerfile-dev docker/
+        docker build -t ghcr.io/${{ github.repository }}/lo:base -f docker/Dockerfile-base docker/
 
     - name: Push Docker image
       run: |
-        docker push ghcr.io/${{ github.repository }}/lo:dev
+        docker push ghcr.io/${{ github.repository }}/lo:base
