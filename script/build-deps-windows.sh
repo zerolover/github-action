@@ -41,15 +41,16 @@ pwd
 /opt/lo/bin/make skia
 /opt/lo/bin/make pdfium
 
-# # debug
-# ls -alhd $LO/workdir/UnpackedTarball/*/
-# ls -alh $LO/instdir/program/
+# debug
+ls -alhd $LO/workdir/UnpackedTarball/*/
+ls -alh $LO/instdir/program/
+du -h $LO/instdir/
+du -h $LO/workdir/
 
 # # copy libraries
 # cd $ROOT
 # mkdir -p $DP/libs
 
-# cp -a $LO_3RD/argon2/libargon2.a $DP/libs/
 # cp -a $LO_3RD/curl/lib/.libs/lib*.so* $DP/libs/
 # cp -a $LO_3RD/harfbuzz/src/.libs/libharfbuzz.a $DP/libs/
 # cp -a $LO_3RD/icu/source/lib/lib*.so* $DP/libs/
@@ -60,9 +61,8 @@ pwd
 # cp -a $LO_3RD/libwebp/sharpyuv/.libs/libsharpyuv.a $DP/libs/
 # cp -a $LO_3RD/libwebp/src/.libs/libwebp.a $DP/libs/
 
-# cp $LO/instdir/program/libepoxy.so $DP/libs/
+# cp $LO/instdir/program/*.dll $DP/libs/
 # cp $LO/workdir/LinkTarget/StaticLibrary/lib*.a $DP/libs/
-# cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.32 $DP/libs/libstdc++.so.6
 
 # # copy headers
 # mkdir -p $DP/inc
