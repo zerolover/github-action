@@ -35,7 +35,7 @@ pwd
 /opt/lo/bin/make libxml2
 /opt/lo/bin/make nss
 /opt/lo/bin/make pdfium
-/opt/lo/bin/make sika
+/opt/lo/bin/make skia
 /opt/lo/bin/make zxcvbn-c
 /opt/lo/bin/make zxing
 /opt/lo/bin/make zlib
