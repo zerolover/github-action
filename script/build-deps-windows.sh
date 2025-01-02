@@ -14,7 +14,7 @@ cd $LO
 pwd
 /opt/lo/bin/make fetch
 /opt/lo/bin/make UnpackedTarball
-/opt/lo/bin/make StaticLibrary
+# /opt/lo/bin/make StaticLibrary
 
 /opt/lo/bin/make argon2
 /opt/lo/bin/make boost
@@ -35,8 +35,11 @@ pwd
 /opt/lo/bin/make libwebp
 /opt/lo/bin/make libxml2
 /opt/lo/bin/make nss
-/opt/lo/bin/make pdfium
+
+/opt/lo/bin/make cppunit
+/opt/lo/bin/make sal
 /opt/lo/bin/make skia
+/opt/lo/bin/make pdfium
 
 # # debug
 # ls -alhd $LO/workdir/UnpackedTarball/*/
