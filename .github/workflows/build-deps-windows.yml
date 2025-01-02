@@ -111,7 +111,7 @@ jobs:
 
           cd /core
           sed -i '/--progress=dot:mega/ s/--progress=dot:mega/--secure-protocol tlsv1 &/' Makefile.fetch
-          ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --with-external-tar="$EXTERNAL_TAR_PATH"
+          ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --with-external-tar="$EXTERNAL_TAR_PATH" --with-parallelism=1
           ./build-deps-windows.sh
         }
         basic
