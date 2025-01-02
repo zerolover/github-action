@@ -21,18 +21,18 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v4
 
-    # - name: Cache Cygwin
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: D:\cygwin
-    #     key: cygwin-windows-2019
-    #     fail-on-cache-miss: true
-
-    - name: Set up Cygwin
-      uses: egor-tensin/setup-cygwin@v4
+    - name: Cache Cygwin
+      uses: actions/cache@v3
       with:
-        install-dir: D:\cygwin
-        packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String
+        path: D:\cygwin
+        key: cygwin-windows-2019
+        fail-on-cache-miss: true
+
+    # - name: Set up Cygwin
+    #   uses: egor-tensin/setup-cygwin@v4
+    #   with:
+    #     install-dir: D:\cygwin
+    #     packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String
 
     - name: Set up build environment
       run: |
