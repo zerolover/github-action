@@ -15,6 +15,27 @@ pwd
 /opt/lo/bin/make fetch
 /opt/lo/bin/make UnpackedTarball
 /opt/lo/bin/make StaticLibrary
+
+/opt/lo/bin/make argon2
+/opt/lo/bin/make boost
+/opt/lo/bin/make box2d
+/opt/lo/bin/make curl
+/opt/lo/bin/make dtoa
+/opt/lo/bin/make epoxy
+/opt/lo/bin/make expat
+/opt/lo/bin/make graphite
+/opt/lo/bin/make harfbuzz
+/opt/lo/bin/make icu
+/opt/lo/bin/make lcms2
+/opt/lo/bin/make libexttextcat
+/opt/lo/bin/make libjpeg-turbo
+/opt/lo/bin/make liblangtag
+/opt/lo/bin/make libpng
+/opt/lo/bin/make libtiff
+/opt/lo/bin/make libwebp
+/opt/lo/bin/make libxml2
+/opt/lo/bin/make nss
+/opt/lo/bin/make pdfium
 /opt/lo/bin/make skia
 
 # # debug
