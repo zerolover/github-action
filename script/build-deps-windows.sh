@@ -44,8 +44,6 @@ pwd
 # debug
 ls -alhd $LO/workdir/UnpackedTarball/*/
 ls -alh $LO/instdir/program/
-du -h $LO/instdir/
-du -h $LO/workdir/
 
 # # copy libraries
 # cd $ROOT

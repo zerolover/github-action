@@ -111,7 +111,7 @@ jobs:
 
           cd /core
           sed -i '/--progress=dot:mega/ s/--progress=dot:mega/--secure-protocol tlsv1 &/' Makefile.fetch
-          ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --with-external-tar="$EXTERNAL_TAR_PATH" --with-parallelism=1
+          ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --with-external-tar="$EXTERNAL_TAR_PATH"
           ./build-deps-windows.sh
         }
         basic
@@ -119,8 +119,8 @@ jobs:
 
     - name: Debug
       run: |
-        Get-ChildItem -Path "D:\cygwin\core\instdir" -Recurse -File | Select-Object FullName
-        Get-ChildItem -Path "D:\cygwin\core\workdir\UnpackedTarball" -Recurse -File | Select-Object FullName
+        Get-ChildItem -Path "D:\cygwin\core\instdir" -Recurse -File | Select-Object FullName, Length
+        Get-ChildItem -Path "D:\cygwin\core\workdir" -Recurse -File | Select-Object FullName, Length
       shell: pwsh
 
     # - name: Compress the output
