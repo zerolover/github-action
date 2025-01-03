@@ -13,8 +13,8 @@ ls -alh $ROOT
 cd $LO
 pwd
 /opt/lo/bin/make fetch
-/opt/lo/bin/make PARALLELISM=1 UnpackedTarball
-# /opt/lo/bin/make StaticLibrary
+/opt/lo/bin/make PARALLELISM=1 xmlsec.allbuild
+/opt/lo/bin/make UnpackedTarball
 
 /opt/lo/bin/make argon2
 /opt/lo/bin/make boost
@@ -44,6 +44,8 @@ pwd
 # debug
 ls -alhd $LO/workdir/UnpackedTarball/*/
 ls -alh $LO/instdir/program/
+du -ah $LO/instdir/
+du -ah $LO/workdir/
 
 # # copy libraries
 # cd $ROOT
