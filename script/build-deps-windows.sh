@@ -13,7 +13,7 @@ ls -alh $ROOT
 cd $LO
 pwd
 /opt/lo/bin/make fetch
-/opt/lo/bin/make UnpackedTarball
+/opt/lo/bin/make PARALLELISM=1 UnpackedTarball
 # /opt/lo/bin/make StaticLibrary
 
 /opt/lo/bin/make argon2
