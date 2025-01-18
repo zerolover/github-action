@@ -10,29 +10,12 @@ LO_3RD=$LO/workdir/UnpackedTarball
 cd $LO
 ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --disable-ccache
 make fetch
-make UnpackedTarball
-make StaticLibrary
 
-make argon2
-make boost
-make box2d
-make curl
-make dtoa
-make epoxy
-make expat
-make graphite
-make harfbuzz
-make hyphen
-make icu
-make lcms2
-make libexttextcat
-make liblangtag
-make libpng
-make libtiff
-make libwebp
-make mythes
-make zxcvbn-c
-make zxing
+libraries='argon2 boost box2d curl dragonbox dtoa epoxy expat frozen graphite harfbuzz hunspell hyphen icu
+           libjpeg-turbo lcms2 libexttextcat liblangtag libpng libtiff libwebp mdds mythes openssl zxcvbn-c zxing'
+echo '$(eval $(call gb_Module_Module,external))' > $LO/external/Module_external.mk
+echo '$(eval $(call gb_Module_add_moduledirs,external,'$libraries'))' >> $LO/external/Module_external.mk
+make StaticLibrary_ulingu external
 
 # debug
 ls -alhd $LO/workdir/UnpackedTarball/*/
@@ -92,3 +75,8 @@ mkdir -p $DP/bin
 cp -a $LO_3RD/icu/source/bin/genbrk $DP/bin/
 cp -a $LO_3RD/icu/source/bin/genccode $DP/bin/
 cp -a $LO_3RD/icu/source/bin/gencmn $DP/bin/
+
+# copy share
+mkdir -p $DP/share/liblangtag
+rsync -r $LO_3RD/liblangtag/data/*.xml $DP/share/liblangtag/
+rsync -r $LO_3RD/liblangtag/data/common $DP/share/liblangtag/

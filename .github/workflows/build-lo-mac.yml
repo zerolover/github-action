@@ -6,11 +6,14 @@ on:
       branch:
         description: 'Branch to build'
         required: true
-        default: 'master'
+        default: 'libreoffice-24-8'
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
     permissions:
       contents: write
 
@@ -20,7 +23,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install autoconf automake make libtool gettext nasm flex gperf
+        brew install -q autoconf automake make libtool gettext nasm flex gperf gnu-tar xz
         HOMEBREW_PREFIX=$(brew --prefix)
         echo $HOMEBREW_PREFIX
         echo "$HOMEBREW_PREFIX/opt/make/libexec/gnubin" >> $GITHUB_PATH
@@ -59,26 +62,28 @@ jobs:
 
     - name: Cache tarballs
       id: cache_tarballs
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: core/external/tarballs
-        key: tarballs-${{ hashFiles('core/download.lst') }}
+        key: tarballs-${{ runner.os }}-${{ hashFiles('core/download.lst') }}
         restore-keys: |
+          tarballs-${{ runner.os }}
           tarballs-
         enableCrossOsArchive: true
 
     - name: Build LibreOffice
       run: |
         cd core
-        ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --enable-bogus-pkg-config
-        make
+        ./autogen.sh --without-java --without-doxygen --without-help --disable-online-update --disable-ccache --enable-bogus-pkg-config --enable-mergelibs=more --disable-dependency-tracking --enable-odk=no
+        make verbose=1 2>&1 | tee build.log
+        mv build.log instdir
 
     - name: Compress the output
       run: |
-        tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz core/instdir
+        tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_$RUNNER_ARCH.tar.xz core/instdir
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
-        path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}.tar.xz
+        name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_$RUNNER_ARCH.tar.xz
+        path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_$RUNNER_ARCH.tar.xz

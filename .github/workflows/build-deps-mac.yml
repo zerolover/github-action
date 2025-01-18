@@ -1,4 +1,4 @@
-name: Build Deps (Ubuntu)
+name: Build Deps (Mac)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
     permissions:
       contents: write
 
@@ -31,6 +34,35 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v4
 
+    - name: Install dependencies
+      run: |
+        brew install -q autoconf automake make libtool gettext nasm flex gperf gnu-tar xz
+        HOMEBREW_PREFIX=$(brew --prefix)
+        echo $HOMEBREW_PREFIX
+        echo "$HOMEBREW_PREFIX/opt/make/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/libtool/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/flex/bin" >> $GITHUB_PATH
+  
+    - name: List installed packages
+      run: |
+        brew list --versions autoconf automake make libtool gettext nasm flex gperf
+        which autoconf
+        which automake
+        which make
+        which libtool
+        which gettext
+        which nasm
+        which flex
+        which gperf
+        autoconf --version | head -1
+        automake --version | head -1
+        make --version | head -1
+        libtool --version | head -1
+        gettext --version | head -1
+        nasm --version | head -1
+        flex --version | head -1
+        gperf --version | head -1
+
     - name: Clone Libreoffice
       run: |
         git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
@@ -43,7 +75,8 @@ jobs:
         commit=$(git rev-parse HEAD | cut -c1-7)
         date=$(date +'%Y%m%d')
         branch=$(echo "$BRANCH_NAME" | tr -cd '0-9')
-        file_name="${date}_${branch}_${commit}_deps_ubuntu.tar.xz"
+        arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
+        file_name="${date}_${branch}_${commit}_deps_mac_${arch}.tar.xz"
         echo "file_name=$file_name" >> $GITHUB_ENV
 
     - name: Cache tarballs
@@ -57,21 +90,13 @@ jobs:
           tarballs-
         enableCrossOsArchive: true
 
-    - name: Pull Docker image
+    - name: Build LibreOffice
       run: |
-        docker pull ghcr.io/zerolover/github-action/lo:dev
-
-    - name: Compile
-      run: |
-        docker run --rm \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          ghcr.io/zerolover/github-action/lo:dev \
-          /bin/bash /workspace/script/build-deps-ubuntu.sh
+        /bin/bash ./script/build-deps-mac.sh
 
     - name: Compress the output
       run: |
-        tar -I "xz -T0" -cf ${{ env.file_name }} deps/
+        gtar -I "xz -T0" -cf ${{ env.file_name }} deps/
 
     - name: Upload build artifacts to Existing Release
       uses: softprops/action-gh-release@v2

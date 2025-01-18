@@ -15,7 +15,7 @@ jobs:
 
     - name: Cache Cygwin
       id: cache-cygwin
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: D:\cygwin
         key: cygwin-windows-2019
@@ -25,7 +25,7 @@ jobs:
       uses: egor-tensin/setup-cygwin@v4
       with:
         install-dir: D:\cygwin
-        packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String dos2unix zstd
+        packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 python3-devel pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String dos2unix zstd
 
     - name: Set up build environment
       run: |
