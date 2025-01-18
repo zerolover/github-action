@@ -80,10 +80,10 @@ jobs:
 
     - name: Compress the output
       run: |
-        tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_$RUNNER_ARCH.tar.xz core/instdir
+        tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_${RUNNER_ARCH}.tar.xz core/instdir
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_$RUNNER_ARCH.tar.xz
-        path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_$RUNNER_ARCH.tar.xz
+        name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_${RUNNER_ARCH}.tar.xz
+        path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_${RUNNER_ARCH}.tar.xz
