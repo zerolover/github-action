@@ -54,11 +54,14 @@ jobs:
       run: |
         git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
 
-    - name: Get latest commit ID
+    - name: Get latest commit ID and file name
       id: get_commit_id
       run: |
         cd core
-        echo "commit_id=$(git rev-parse HEAD | cut -c1-7)" >> $GITHUB_ENV
+        commit=$(git rev-parse HEAD | cut -c1-7)
+        arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
+        file_name="${{ github.event.inputs.branch }}_${commit}_mac_${arch}.tar.xz"
+        echo "file_name=$file_name" >> $GITHUB_ENV
 
     - name: Cache tarballs
       id: cache_tarballs
@@ -80,10 +83,10 @@ jobs:
 
     - name: Compress the output
       run: |
-        tar -cJf lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_${RUNNER_ARCH}.tar.xz core/instdir
+        tar -cJf ${{ env.file_name }} core/instdir
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_${RUNNER_ARCH}.tar.xz
-        path: lo_mac_${{ github.event.inputs.branch }}_${{ env.commit_id }}_${RUNNER_ARCH}.tar.xz
+        name: ${{ env.file_name }}
+        path: ${{ env.file_name }}
