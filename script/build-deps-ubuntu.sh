@@ -42,6 +42,7 @@ cp -a $LO_3RD/mythes/.libs/libmythes*.a $DP/libs/libmythes.a
 cp $LO/instdir/program/libepoxy.so $DP/libs/
 cp $LO/workdir/LinkTarget/StaticLibrary/lib*.a $DP/libs/
 cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.32 $DP/libs/libstdc++.so.6
+chmod +x $DP/libs/*so*
 
 # copy headers
 mkdir -p $DP/inc

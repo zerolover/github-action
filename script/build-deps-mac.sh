@@ -46,6 +46,7 @@ cp $LO/instdir/LibreOfficeDev.app/Contents/Frameworks/libpdfiumlo.dylib $DP/libs
 cp $LO/instdir/LibreOfficeDev.app/Contents/Frameworks/libskialo.dylib $DP/libs/
 cp $LO/instdir/LibreOfficeDev.app/Contents/Frameworks/libepoxy.dylib $DP/libs/
 cp $LO/workdir/LinkTarget/StaticLibrary/lib*.a $DP/libs/
+chmod +x $DP/libs/*dylib*
 
 # copy headers
 mkdir -p $DP/inc
