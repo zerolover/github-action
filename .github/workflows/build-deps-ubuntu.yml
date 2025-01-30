@@ -22,7 +22,7 @@ jobs:
       uses: mukunku/tag-exists-action@v1.6.0
       id: check-tag
       with: 
-        tag: 'v24.8.x'
+        tag: ${{ github.event.inputs.release_tag }}
 
     - name: Release tag not exists
       run: echo "Tag does not exist, exiting..." && exit 1
