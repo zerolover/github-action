@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Branch to build'
         required: true
-        default: 'libreoffice-24-8'
+        default: 'libreoffice-25-2'
       release_tag:
         description: 'Existing Release tag to upload to'
         required: true
