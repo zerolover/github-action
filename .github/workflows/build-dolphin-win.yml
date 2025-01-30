@@ -1,0 +1,131 @@
+name: Build Dolphin (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cache_to_S3:
+        description: 'Upload cache to S3'
+        required: true
+        default: false
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Download and extract source
+      run: |
+        echo "Downloading..."
+        $arch = $env:RUNNER_ARCH.ToLower()
+        if ($arch -eq "x64") {
+            $depsUrl = "${{ vars.DEPS_WIN_X64 }}"
+        } elseif ($arch -eq "arm64") {
+            $depsUrl = "${{ vars.DEPS_WIN_ARM64 }}"
+        } else {
+            echo "Unsupported architecture: $arch"
+            exit 1
+        }
+        C:\msys64\usr\bin\wget -q $depsUrl -O deps.tar.xz
+        aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        echo "Extracting..."
+        C:\msys64\usr\bin\tar.exe -xJf dolphin.tar.xz
+        C:\msys64\usr\bin\tar.exe -xJf deps.tar.xz -C dolphin
+
+    - name: Enable Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install tools
+      run: |
+        C:\msys64\usr\bin\pacman.exe -S --noconfirm bison flex gperf libxslt
+
+        cd D:\
+        mkdir tools > $null
+        C:\msys64\usr\bin\wget.exe -q https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-windows-x86_64.zip -O ccache.zip
+        C:\msys64\usr\bin\wget.exe -q https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip -O ninja.zip
+        C:\msys64\usr\bin\unzip.exe -q -j ccache.zip -d tools
+        C:\msys64\usr\bin\unzip.exe -q -j ninja.zip -d tools
+        rm ccache.zip
+        rm ninja.zip
+        echo "D:\tools" >> $env:GITHUB_PATH
+
+        $arch = $env:RUNNER_ARCH.ToLower()
+        $clOutput = cmd.exe /c "cl.exe 2>&1"
+        $version = ($clOutput | Select-String -Pattern '(\d+\.\d+\.\d+)').Matches.Groups[1].Value
+        $clver = $version -replace '\.', ''
+        $cache_key = "ccache-${{ runner.os }}-${arch}-${clver}"
+        echo "cache_key=$cache_key" >> $env:GITHUB_ENV
+
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: .ccache
+        key: ${{ env.cache_key }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ env.cache_key }}
+
+    - name: Cache from S3
+      run: |
+        if (Test-Path -Path .ccache) {
+          Write-Output ".ccache directory exists, skipping S3 download"
+          exit 0
+        }
+        aws s3api head-object --bucket dolphin --key cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          echo "Cache exists in S3, downloading..."
+          aws s3 cp s3://dolphin/cache/${{ env.cache_key }}.tzst ccache.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+          C:\msys64\usr\bin\tar.exe -I "zstd -d" -xf ccache.tzst
+        } else {
+          echo "Cache does not exist in S3"
+          exit 0
+        }
+
+    - name: Setup ccache
+      run: |
+        ccache --set-config=cache_dir="$env:GITHUB_WORKSPACE\.ccache"
+        ccache -sv
+
+    - name: Compile
+      run: |
+        cd dolphin
+        mkdir build
+        cd build
+        cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        ninja
+        ninja install
+
+    - name: Cleanup cache
+      run: |
+        ccache -sv
+        ccache --evict-older-than 1d
+        ccache -sv
+
+    - name: Upload cache to S3
+      if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
+      run: |
+        C:\msys64\usr\bin\tar.exe -I "zstd -T0 -6 -k" -cf ${{ env.cache_key }}.tzst .ccache
+        aws s3 cp ${{ env.cache_key }}.tzst s3://dolphin/cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        if ($LASTEXITCODE -ne 0) {
+          echo "Upload failed, but continuing..."
+          exit 0
+        }
+
+    - name: Compress the output
+      run: |
+        cd dolphin/build
+        7z a -t7z dolphin-win.7z Dolphin
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dolphin-win.7z
+        path: dolphin/build/dolphin-win.7z

@@ -1,0 +1,122 @@
+name: Build LibreOffice (Win)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'libreoffice-24-8'
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    # - name: Cache Cygwin
+    #   uses: actions/cache@v4
+    #   with:
+    #     path: D:\cygwin
+    #     key: cygwin-windows-2019
+    #     fail-on-cache-miss: true
+
+    - name: Set up Cygwin
+      uses: egor-tensin/setup-cygwin@v4
+      with:
+        install-dir: D:\cygwin
+        packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String
+
+    - name: Set up build environment
+      run: |
+        basic() {
+          rm /packages -rf # remove cygwin cache packages
+          mkdir -p /opt/lo/bin
+          cd /opt/lo/bin
+          wget https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
+          cp make-4.2.1-msvc.exe make
+          chmod +x make
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: List installed packages
+      run: |
+        basic() {
+          which autoconf || echo "autoconf not found"
+          which automake || echo "automake not found"
+          which make || echo "make not found"
+          which gettext || echo "gettext not found"
+          which nasm || echo "nasm not found"
+          which flex || echo "flex not found"
+          which gperf || echo "gperf not found"
+          autoconf --version | head -1 || echo "autoconf not installed"
+          automake --version | head -1 || echo "automake not installed"
+          make --version | head -1 || echo "make not installed"
+          gettext --version | head -1 || echo "gettext not installed"
+          nasm --version | head -1 || echo "nasm not installed"
+          flex --version | head -1 || echo "flex not installed"
+          gperf --version | head -1 || echo "gperf not installed"
+          /opt/lo/bin/make --version | head -1 || echo "make-win not installed"
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Clone Libreoffice
+      run: |
+        basic() {
+          cd /
+          git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Get latest commit ID
+      run: |
+        cd D:\cygwin\core
+        $commitId = git rev-parse HEAD
+        $shortCommitId = $commitId.Substring(0, 7)
+        echo "commit_id=$shortCommitId" >> $env:GITHUB_ENV
+
+    - name: Cache tarballs
+      id: cache_tarballs
+      uses: actions/cache@v4
+      with:
+        path: core/external/tarballs
+        key: tarballs-${{ runner.os }}-${{ hashFiles('D:\cygwin\core\download.lst') }}
+        restore-keys: |
+          tarballs-${{ runner.os }}
+          tarballs-
+        enableCrossOsArchive: true
+
+    - name: Build LibreOffice
+      run: |
+        basic() {
+          cd /core
+          # Convert Windows path to Cygwin path
+          EXTERNAL_TAR_PATH=$(echo "${{ github.workspace }}"/core/external/tarballs | sed 's|\\|/|g' | sed 's|^D:|/cygdrive/d|')
+          echo "Using external tarballs path: $EXTERNAL_TAR_PATH"
+          ./autogen.sh --without-java --without-doxygen --without-help --without-fonts --disable-online-update --with-external-tar="$EXTERNAL_TAR_PATH" --enable-mergelibs=more --disable-dependency-tracking --enable-odk=no
+          /opt/lo/bin/make gb_COLOR=1
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Compress the output
+      run: |
+        basic() {
+          cd /
+          tar -cJf lo.tar.xz /core/instdir
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ github.event.inputs.branch }}_${{ env.commit_id }}_win.tar.xz
+        path: D:\cygwin\lo.tar.xz

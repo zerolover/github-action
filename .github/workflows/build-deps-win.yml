@@ -1,0 +1,134 @@
+name: Build Deps (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'libreoffice-24-8'
+      release_tag:
+        description: 'Existing Release tag to upload to'
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check if Release tag exists
+      uses: mukunku/tag-exists-action@v1.6.0
+      id: check-tag
+      with: 
+        tag: 'v24.8.x'
+
+    - name: Release tag not exists
+      run: Write-Output "Tag does not exist, exiting..."; exit 1
+      if: steps.check-tag.outputs.exists != 'true'
+
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Cache Cygwin
+      uses: actions/cache@v4
+      with:
+        path: D:\cygwin
+        key: cygwin-windows-2019
+        fail-on-cache-miss: true
+
+    - name: List installed packages
+      run: |
+        basic() {
+          which autoconf || echo "autoconf not found"
+          which automake || echo "automake not found"
+          which make || echo "make not found"
+          which gettext || echo "gettext not found"
+          which nasm || echo "nasm not found"
+          which flex || echo "flex not found"
+          which gperf || echo "gperf not found"
+          autoconf --version | head -1 || echo "autoconf not installed"
+          automake --version | head -1 || echo "automake not installed"
+          make --version | head -1 || echo "make not installed"
+          gettext --version | head -1 || echo "gettext not installed"
+          nasm --version | head -1 || echo "nasm not installed"
+          flex --version | head -1 || echo "flex not installed"
+          gperf --version | head -1 || echo "gperf not installed"
+          /opt/lo/bin/make --version | head -1 || echo "make-win not installed"
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Clone Libreoffice
+      run: |
+        basic() {
+          cd /
+          git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Get latest commit ID and file name
+      env:
+        BRANCH_NAME: ${{ github.event.inputs.branch }}
+      run: |
+        cd D:\cygwin\core
+        $commit_id = git rev-parse HEAD
+        $commit = $commit_id.Substring(0, 7)
+        $date = (Get-Date).ToString("yyyyMMdd")
+        $branch = -join ($env:BRANCH_NAME -split '\D+')
+        $arch = $env:RUNNER_ARCH.ToLower()
+        $file_name = "${date}_${branch}_${commit}_deps_win_${arch}.tar.xz"
+        echo "file_name=$file_name" >> $env:GITHUB_ENV
+
+        $hash = (Get-FileHash -Algorithm MD5 D:\cygwin\core\download.lst).Hash
+        echo "hash=$hash" >> $env:GITHUB_ENV
+
+    - name: Cache tarballs
+      uses: actions/cache@v4
+      with:
+        path: core/external/tarballs
+        key: tarballs-slim-${{ env.hash }}
+        restore-keys: |
+          tarballs-slim
+          tarballs-
+        enableCrossOsArchive: true
+
+    - name: Build LibreOffice
+      run: |
+        basic() {
+          # Convert Windows path to Cygwin path
+          CYGWIN_PATH=$(echo "${{ github.workspace }}" | sed 's|\\|/|g' | sed 's|^D:|/cygdrive/d|')
+          echo "cygwin_path: $CYGWIN_PATH"
+          EXTERNAL_TAR_PATH=$CYGWIN_PATH/core/external/tarballs
+          SCRIPT=$CYGWIN_PATH/script/build-deps-windows.sh
+
+          # Copy script to and convert \r\n to \n
+          cp $SCRIPT /core/ && chmod +x /core/build-deps-windows.sh
+          sed -i 's/\r$//' /core/build-deps-windows.sh
+
+          cd /core
+          sed -i '/--progress=dot:mega/ s/--progress=dot:mega/--secure-protocol tlsv1 &/' Makefile.fetch
+          ./autogen.sh --without-java --without-doxygen --without-help --without-fonts --disable-online-update --with-external-tar="$EXTERNAL_TAR_PATH"
+          ./build-deps-windows.sh
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Compress the output
+      run: |
+        basic() {
+          cd /
+          tar -I "xz -T0" -cf ${{ env.file_name }} /deps
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: Upload build artifacts to Existing Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.event.inputs.release_tag }}
+        files: D:\cygwin\${{ env.file_name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

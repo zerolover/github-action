@@ -1,4 +1,4 @@
-name: Build Deps (Ubuntu)
+name: Build Deps (Linux)
 
 on:
   workflow_dispatch:
@@ -44,7 +44,7 @@ jobs:
         date=$(date +'%Y%m%d')
         branch=$(echo "$BRANCH_NAME" | tr -cd '0-9')
         arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
-        file_name="${date}_${branch}_${commit}_deps_ubuntu_${arch}.tar.xz"
+        file_name="${date}_${branch}_${commit}_deps_linux_${arch}.tar.xz"
         echo "file_name=$file_name" >> $GITHUB_ENV
 
         hash=$(md5sum download.lst | awk '{print $1}' | tr '[:lower:]' '[:upper:]')
@@ -62,14 +62,14 @@ jobs:
 
     - name: Pull Docker image
       run: |
-        docker pull ghcr.io/zerolover/github-action/lo:dev
+        docker pull ghcr.io/zerolover/github-action/lo:slim
 
     - name: Compile
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          ghcr.io/zerolover/github-action/lo:dev \
+          ghcr.io/zerolover/github-action/lo:slim \
           /bin/bash /workspace/script/build-deps-ubuntu.sh
 
     - name: Compress the output

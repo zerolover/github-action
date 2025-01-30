@@ -1,0 +1,32 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && apt-get install -y file vim git gnupg2 wget python3 zip unzip rsync zstd patchelf
+
+RUN bash -c 'echo "deb https://ppa.launchpadcontent.net/ubuntu-toolchain-r/test/ubuntu bionic main" > /etc/apt/sources.list.d/ubuntu-toolchain-r-test.list' && \
+    bash -c 'echo "deb-src https://ppa.launchpadcontent.net/ubuntu-toolchain-r/test/ubuntu bionic main" >> /etc/apt/sources.list.d/ubuntu-toolchain-r-test.list'
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys C8EC952E2A0E1FBDC5090F6A2C277A0A352154E5
+RUN apt-get update && apt-get install -y build-essential gcc-13 g++-13
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 70 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 130 --slave /usr/bin/g++ g++ /usr/bin/g++-13
+
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.31.3/cmake-3.31.3.tar.gz -O cmake.tar.gz
+RUN mkdir cmake && tar -xzvf cmake.tar.gz --strip-components=1 -C cmake
+RUN cd cmake && ./bootstrap --parallel=8 -- -DCMAKE_USE_OPENSSL=OFF -DBUILD_TESTING=OFF && \
+    make -j8 && make install && \
+    cd .. && rm -rf cmake cmake.tar.gz
+
+RUN wget https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-linux-x86_64.tar.xz -O ccache.tar.xz
+RUN mkdir ccache && tar -xJf ccache.tar.xz --strip-components=1 -C ccache
+RUN cd ccache && make install && \
+    cd .. && rm -rf ccache ccache.tar.xz
+
+RUN wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip -O ninja.zip
+RUN mkdir ninja && unzip ninja.zip -d ninja
+RUN cd ninja && mv ninja /usr/bin/ && \
+    cd .. && rm -rf ninja ninja.zip
+
+RUN apt-get update && apt-get install -y \
+    autoconf xsltproc bison flex gperf python3 python3-dev \
+    libcups2-dev libxml2-dev libnss3-dev libgtk-3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
+RUN rm -rf /var/lib/apt/lists/*

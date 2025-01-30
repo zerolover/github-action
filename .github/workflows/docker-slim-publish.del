@@ -1,9 +1,7 @@
-name: Build and Push Docker Image
+name: Build and Push Docker Image (slim)
 
 on:
-  push:
-    tags:
-      - 'docker_v*'  # 只在以 docker_v 开头的标签推送时触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,10 +19,8 @@ jobs:
 
     - name: Build Docker image
       run: |
-        TAG=${GITHUB_REF#refs/tags/}  # 去掉 refs/tags/ 前缀
-        docker build -t ghcr.io/${{ github.repository }}/lo:$TAG -f docker/Dockerfile docker/
+        docker build -t ghcr.io/${{ github.repository }}/lo:slim -f docker/Dockerfile-almalinux docker/
 
     - name: Push Docker image
       run: |
-        TAG=${GITHUB_REF#refs/tags/}  # 去掉 refs/tags/ 前缀
-        docker push ghcr.io/${{ github.repository }}/lo:$TAG
+        docker push ghcr.io/${{ github.repository }}/lo:slim

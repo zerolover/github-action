@@ -1,0 +1,26 @@
+FROM almalinux:8.10
+
+RUN yum install -y epel-release
+RUN dnf config-manager --set-enabled powertools
+RUN yum install -y automake bison cups-devel dbus-x11 flex gcc-toolset-12 git gperf gstreamer1-plugins-base-devel gtk3-devel libXt-devel libxslt-devel make nss-devel perl-Archive-Zip python36-devel vim-enhanced wget xcb-util-wm-devel xorg-x11-server-Xvfb yasm patch zip bzip2 rsync zstd patchelf
+RUN yum clean all && rm -rf /var/cache/yum
+
+ENV PATH=/opt/rh/gcc-toolset-12/root/usr/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/rh/gcc-toolset-12/root/usr/lib64:/opt/rh/gcc-toolset-12/root/usr/lib:$LD_LIBRARY_PATH
+
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.31.3/cmake-3.31.3.tar.gz -O cmake.tar.gz
+RUN mkdir cmake && tar -xzvf cmake.tar.gz --strip-components=1 -C cmake
+RUN source /opt/rh/gcc-toolset-12/enable && \
+    cd cmake && ./bootstrap --parallel=8 -- -DCMAKE_USE_OPENSSL=OFF -DBUILD_TESTING=OFF && \
+    make -j8 && make install && \
+    cd .. && rm -rf cmake cmake.tar.gz
+
+RUN wget https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-linux-x86_64.tar.xz -O ccache.tar.xz
+RUN mkdir ccache && tar -xJf ccache.tar.xz --strip-components=1 -C ccache
+RUN cd ccache && make install && \
+    cd .. && rm -rf ccache ccache.tar.xz
+
+RUN wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip -O ninja.zip
+RUN mkdir ninja && unzip ninja.zip -d ninja
+RUN cd ninja && mv ninja /usr/bin/ && \
+    cd .. && rm -rf ninja ninja.zip

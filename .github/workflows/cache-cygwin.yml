@@ -1,0 +1,68 @@
+name: Cache Cygwin (Win)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2019
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Cache Cygwin
+      id: cache-cygwin
+      uses: actions/cache@v4
+      with:
+        path: D:\cygwin
+        key: cygwin-windows-2019
+
+    - name: Set up Cygwin
+      if: steps.cache-cygwin.outputs.cache-hit != 'true'
+      uses: egor-tensin/setup-cygwin@v4
+      with:
+        install-dir: D:\cygwin
+        packages: autoconf automake bison cabextract flex gettext-devel git gnupg gperf make mintty nasm openssh openssl patch perl python python3 python3-devel pkg-config rsync unzip vim wget zip perl-Archive-Zip perl-Font-TTF perl-IO-String dos2unix zstd
+
+    - name: Set up build environment
+      run: |
+        basic() {
+          rm /packages /http* -rf # remove cygwin cache packages
+          echo "secure_protocol = TLSv1" | tee /etc/wgetrc > /dev/null
+          mkdir -p /opt/lo/bin
+          cd /opt/lo/bin
+          wget https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe
+          cp make-4.2.1-msvc.exe make
+          chmod +x make
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    - name: List installed packages
+      run: |
+        basic() {
+          which autoconf
+          which automake
+          which make
+          which gettext
+          which nasm
+          which flex
+          which gperf
+          autoconf --version | head -1
+          automake --version | head -1
+          make --version | head -1
+          gettext --version | head -1
+          nasm --version | head -1
+          flex --version | head -1
+          gperf --version | head -1
+          /opt/lo/bin/make --version | head -1
+        }
+        basic
+      shell: D:\cygwin\bin\bash.exe --login --norc -eo pipefail -o igncr '{0}'
+
+    # - name: Debug
+    #   run: |
+    #     Get-ChildItem -Path "D:\cygwin" -Recurse -File | Select-Object FullName

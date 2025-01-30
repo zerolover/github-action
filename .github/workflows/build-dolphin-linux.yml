@@ -1,0 +1,106 @@
+name: Build Dolphin (Linux)
+
+on:
+  workflow_dispatch:
+    inputs:
+      cache_to_S3:
+        description: 'Upload cache to S3'
+        required: true
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Download and extract source
+      run: |
+        arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
+        cache_key="ccache-${{ runner.os }}-${arch}"
+        echo "arch=$arch" >> $GITHUB_ENV
+        echo "cache_key=$cache_key" >> $GITHUB_ENV
+        if [ "$arch" = "x64" ]; then
+            depsUrl="${{ vars.DEPS_LINUX_X64 }}"
+        elif [ "$arch" = "arm64" ]; then
+            depsUrl="${{ vars.DEPS_LINUX_ARM64 }}"
+        else
+            echo "Unsupported architecture: $arch"
+            exit 1
+        fi
+        wget -q $depsUrl -O deps.tar.xz > /dev/null 2>&1
+        aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        tar -xJf dolphin.tar.xz 2>&1
+        tar -xJf deps.tar.xz -C dolphin > /dev/null 2>&1
+
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: .ccache
+        key: ${{ env.cache_key }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ env.cache_key }}
+
+    - name: Cache from S3
+      run: |
+        if [ -d .ccache ]; then
+          exit 0
+        fi
+        if aws s3api head-object --bucket dolphin --key cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} > /dev/null 2>&1; then
+          echo "Cache exists in S3, downloading..."
+          aws s3 cp s3://dolphin/cache/${{ env.cache_key }}.tzst ccache.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+          tar -I unzstd -xf ccache.tzst
+        else
+          echo "Cache does not exist in S3"
+        fi
+
+    - name: Pull Docker image
+      run: |
+        docker pull ghcr.io/zerolover/github-action/lo:slim
+
+    - name: Compile
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          ghcr.io/zerolover/github-action/lo:slim \
+          sh -c "ccache --set-config=cache_dir=/workspace/.ccache && ccache -sv && \
+            git config --global --add safe.directory /workspace && \
+            cd dolphin && mkdir build && cd build && cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && \
+            ninja && ninja install"
+
+    - name: Cleanup cache
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/workspace \
+          -w /workspace \
+          ghcr.io/zerolover/github-action/lo:base \
+          sh -c "ccache --set-config=cache_dir=/workspace/.ccache && ccache -sv && \
+            ccache --evict-older-than 1d && ccache -sv"
+
+    - name: Upload cache to S3
+      if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
+      run: |
+        tar -I "zstdmt -6 -k" -cf ${{ env.cache_key }}.tzst .ccache
+        aws s3 cp ${{ env.cache_key }}.tzst s3://dolphin/cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress || true
+
+    - name: Compress the output
+      run: |
+        wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool > /dev/null 2>&1
+        chmod +x appimagetool
+        cp -r dolphin/build/Dolphin dolphin.AppDir
+        strip -s dolphin.AppDir/program/* > /dev/null 2>&1 || true
+        ./appimagetool dolphin.AppDir dolphin-${{ env.arch }}.AppImage
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dolphin-${{ env.arch }}.AppImage
+        path: dolphin-${{ env.arch }}.AppImage

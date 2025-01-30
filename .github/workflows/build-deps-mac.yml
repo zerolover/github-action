@@ -1,4 +1,4 @@
-name: Build Deps (Ubuntu)
+name: Build Deps (Mac)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
     permissions:
       contents: write
 
@@ -31,6 +34,19 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v4
 
+    - uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.2'
+
+    - name: Install dependencies
+      run: |
+        brew install -q autoconf automake make libtool gettext nasm flex gperf gnu-tar xz gsed
+        HOMEBREW_PREFIX=$(brew --prefix)
+        echo $HOMEBREW_PREFIX
+        echo "$HOMEBREW_PREFIX/opt/make/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/libtool/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/flex/bin" >> $GITHUB_PATH
+
     - name: Clone Libreoffice
       run: |
         git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
@@ -44,10 +60,10 @@ jobs:
         date=$(date +'%Y%m%d')
         branch=$(echo "$BRANCH_NAME" | tr -cd '0-9')
         arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
-        file_name="${date}_${branch}_${commit}_deps_ubuntu_${arch}.tar.xz"
+        file_name="${date}_${branch}_${commit}_deps_mac_${arch}.tar.xz"
         echo "file_name=$file_name" >> $GITHUB_ENV
 
-        hash=$(md5sum download.lst | awk '{print $1}' | tr '[:lower:]' '[:upper:]')
+        hash=$(md5 -q download.lst | tr '[:lower:]' '[:upper:]')
         echo "hash=$hash" >> $GITHUB_ENV
 
     - name: Cache tarballs
@@ -60,21 +76,13 @@ jobs:
           tarballs-
         enableCrossOsArchive: true
 
-    - name: Pull Docker image
+    - name: Build LibreOffice
       run: |
-        docker pull ghcr.io/zerolover/github-action/lo:dev
-
-    - name: Compile
-      run: |
-        docker run --rm \
-          -v ${{ github.workspace }}:/workspace \
-          -w /workspace \
-          ghcr.io/zerolover/github-action/lo:dev \
-          /bin/bash /workspace/script/build-deps-ubuntu.sh
+        /bin/bash ./script/build-deps-mac.sh
 
     - name: Compress the output
       run: |
-        tar -I "xz -T0" -cf ${{ env.file_name }} deps/
+        gtar -I "xz -T0" -cf ${{ env.file_name }} deps/
 
     - name: Upload build artifacts to Existing Release
       uses: softprops/action-gh-release@v2

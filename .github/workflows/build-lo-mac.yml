@@ -1,0 +1,92 @@
+name: Build LibreOffice (Mac)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'libreoffice-24-8'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
+    permissions:
+      contents: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install -q autoconf automake make libtool gettext nasm flex gperf gnu-tar xz gsed
+        HOMEBREW_PREFIX=$(brew --prefix)
+        echo $HOMEBREW_PREFIX
+        echo "$HOMEBREW_PREFIX/opt/make/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/libtool/libexec/gnubin" >> $GITHUB_PATH
+        echo "$HOMEBREW_PREFIX/opt/flex/bin" >> $GITHUB_PATH
+  
+    - name: List installed packages
+      run: |
+        brew list --versions autoconf automake make libtool gettext nasm flex gperf
+        which autoconf
+        which automake
+        which make
+        which libtool
+        which gettext
+        which nasm
+        which flex
+        which gperf
+        autoconf --version | head -1
+        automake --version | head -1
+        make --version | head -1
+        libtool --version | head -1
+        gettext --version | head -1
+        nasm --version | head -1
+        flex --version | head -1
+        gperf --version | head -1
+
+    - name: Clone Libreoffice
+      run: |
+        git clone --depth=1 --branch ${{ github.event.inputs.branch }} https://github.com/LibreOffice/core.git
+
+    - name: Get latest commit ID and file name
+      id: get_commit_id
+      run: |
+        cd core
+        commit=$(git rev-parse HEAD | cut -c1-7)
+        arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
+        file_name="${{ github.event.inputs.branch }}_${commit}_mac_${arch}.tar.xz"
+        echo "file_name=$file_name" >> $GITHUB_ENV
+
+    - name: Cache tarballs
+      id: cache_tarballs
+      uses: actions/cache@v4
+      with:
+        path: core/external/tarballs
+        key: tarballs-${{ runner.os }}-${{ hashFiles('core/download.lst') }}
+        restore-keys: |
+          tarballs-${{ runner.os }}
+          tarballs-
+        enableCrossOsArchive: true
+
+    - name: Build LibreOffice
+      run: |
+        cd core
+        ./autogen.sh --without-java --without-doxygen --without-help --without-fonts --disable-online-update --disable-ccache --enable-bogus-pkg-config --enable-mergelibs=more --disable-dependency-tracking --enable-odk=no
+        make verbose=1 2>&1 | tee build.log
+        mv build.log instdir
+
+    - name: Compress the output
+      run: |
+        tar -cJf ${{ env.file_name }} core/instdir
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.file_name }}
+        path: ${{ env.file_name }}
