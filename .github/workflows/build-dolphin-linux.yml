@@ -85,11 +85,17 @@ jobs:
           sh -c "ccache --set-config=cache_dir=/workspace/.ccache && ccache -sv && \
             ccache --evict-older-than 1d && ccache -sv"
 
+    - name: Setup Rclone
+      if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
+      uses: AnimMouse/setup-rclone@v1
+      with:
+        rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
     - name: Upload cache to S3
       if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
       run: |
         tar -I "zstdmt -6 -k" -cf ${{ env.cache_key }}.tzst .ccache
-        aws s3 cp ${{ env.cache_key }}.tzst s3://dolphin/cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress || true
+        rclone copyto ${{ env.cache_key }}.tzst r2:dolphin/cache/${{ env.cache_key }}.tzst || true
 
     - name: Compress the output
       run: |

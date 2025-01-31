@@ -109,11 +109,17 @@ jobs:
         ccache --evict-older-than 1d
         ccache -sv
 
+    - name: Setup Rclone
+      if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
+      uses: AnimMouse/setup-rclone@v1
+      with:
+        rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
     - name: Upload cache to S3
       if: ${{ github.event.inputs.cache_to_S3 == 'true' }}
       run: |
         C:\msys64\usr\bin\tar.exe -I "zstd -T0 -6 -k" -cf ${{ env.cache_key }}.tzst .ccache
-        aws s3 cp ${{ env.cache_key }}.tzst s3://dolphin/cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        rclone copyto ${{ env.cache_key }}.tzst r2:dolphin/cache/${{ env.cache_key }}.tzst
         if ($LASTEXITCODE -ne 0) {
           echo "Upload failed, but continuing..."
           exit 0
