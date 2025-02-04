@@ -9,6 +9,9 @@ LO_3RD=$LO/workdir/UnpackedTarball
 # build dependencies
 cd $LO
 gsed -i '/gb_Library_use_libraries/,+2d' external/skia/Library_skia.mk
+wget -q https://github.com/zerolover/github-action/releases/download/v25.2.x/icudt75l.dat -O external/icu/icudt75l.dat
+gsed -i '/# vim: set noet sw=4 ts=4:/i $(eval $(call gb_UnpackedTarball_add_file,icu,source/data/in/icudt75l.dat,external/icu/icudt75l.dat))' \
+    external/icu/UnpackedTarball_icu.mk
 download='ARGON2 BOOST BOX2D BZIP2 CPPUNIT CURL DRAGONBOX DOTA EPOXY EXPAT FROZEN GRAPHITE HARFBUZZ HUNSPELL HYPHEN
           ICU LCMS2 LIBEXTTEXTCAT LIBFFI LIBJPEG_TURBO LIBLANGTAG LIBPNG LIBTIFF LIBWEBP LIBXML2 MDDS MYTHES NSS
           OPENSSL PDFIUM PYTHON SKIA ZLIB ZXCVBN ZXING'
