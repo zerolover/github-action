@@ -39,6 +39,8 @@ jobs:
         aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
         tar -xJf dolphin.tar.xz 2>&1
         tar -xJf deps.tar.xz -C dolphin > /dev/null 2>&1
+        echo "commit=$(cat dolphin/version)" >> $GITHUB_ENV
+        mv dolphin/dolphin_config.cmake dolphin/cmake/dolphin_config.cmake || true
 
     - name: Cache ccache
       uses: actions/cache@v4
@@ -81,7 +83,7 @@ jobs:
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
           -w /workspace \
-          ghcr.io/zerolover/github-action/lo:base \
+          ghcr.io/zerolover/github-action/lo:slim \
           sh -c "ccache --set-config=cache_dir=/workspace/.ccache && ccache -sv && \
             ccache --evict-older-than 1d && ccache -sv"
 
@@ -106,7 +108,27 @@ jobs:
         ./appimagetool dolphin.AppDir dolphin-${{ env.arch }}.AppImage
 
     - name: Upload build artifacts
+      id: artifact-upload-step
       uses: actions/upload-artifact@v4
       with:
         name: dolphin-${{ env.arch }}.AppImage
         path: dolphin-${{ env.arch }}.AppImage
+
+    - name: Prepare and send Feishu message
+      if: always()
+      run: |
+        title="Dolphin ${{ runner.os }} ${{ env.arch }}"
+        title_color=$([[ "${{ job.status }}" == "success" ]] && echo "green" || echo "red")
+        date=$(date +'%Y-%m-%d')
+        link_action=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+        link_artifact=${{ steps.artifact-upload-step.outputs.artifact-url }}
+        commit=${{ env.commit }}
+        json_str='{"msg_type": "interactive", "card": {"type": "template", "data": {"template_id": "AAqBkUVXyqaTs", "template_version_name": "1.0.4", "template_variable": {"title": "'"$title"'", "title_color": "'"$title_color"'", "date": "'"$date"'", "link_action": "'"$link_action"'", "link_artifact": "'"$link_artifact"'", "commit": "'"$commit"'"}}}}'
+        echo "json_str=$json_str" >> $GITHUB_ENV
+
+    - name: feishu-bot
+      if: always()
+      uses: Rollingegg/feishu-robot-action@v1
+      with:
+        uuid: ${{ secrets.WEBHOOK_ID }}
+        json: ${{ env.json_str }}

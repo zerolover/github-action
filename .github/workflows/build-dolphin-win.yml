@@ -33,11 +33,17 @@ jobs:
             echo "Unsupported architecture: $arch"
             exit 1
         }
+        echo "arch=$arch" >> $env:GITHUB_ENV
         C:\msys64\usr\bin\wget -q $depsUrl -O deps.tar.xz
         aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
         echo "Extracting..."
         C:\msys64\usr\bin\tar.exe -xJf dolphin.tar.xz
         C:\msys64\usr\bin\tar.exe -xJf deps.tar.xz -C dolphin
+        echo "commit=$(cat dolphin/version)" >> $env:GITHUB_ENV
+        C:\msys64\usr\bin\mv.exe dolphin/dolphin_config.cmake dolphin/cmake/dolphin_config.cmake
+        if ($LASTEXITCODE -ne 0) {
+          exit 0
+        }
 
     - name: Enable Developer Command Prompt
       uses: ilammy/msvc-dev-cmd@v1
@@ -58,11 +64,10 @@ jobs:
         rm ninja.zip
         echo "D:\tools" >> $env:GITHUB_PATH
 
-        $arch = $env:RUNNER_ARCH.ToLower()
         $clOutput = cmd.exe /c "cl.exe 2>&1"
         $version = ($clOutput | Select-String -Pattern '(\d+\.\d+\.\d+)').Matches.Groups[1].Value
         $clver = $version -replace '\.', ''
-        $cache_key = "ccache-${{ runner.os }}-${arch}-${clver}"
+        $cache_key = "ccache-${{ runner.os }}-${{ env.arch }}-${clver}"
         echo "cache_key=$cache_key" >> $env:GITHUB_ENV
 
     - name: Cache ccache
@@ -131,7 +136,33 @@ jobs:
         7z a -t7z dolphin-win.7z Dolphin
 
     - name: Upload build artifacts
+      id: artifact-upload-step
       uses: actions/upload-artifact@v4
       with:
         name: dolphin-win.7z
         path: dolphin/build/dolphin-win.7z
+
+    - name: Prepare and send Feishu message
+      if: always()
+      run: |
+        $title = "Dolphin ${{ runner.os }} ${{ env.arch }}"
+        if ("${{ job.status }}" -eq "success") {
+          $title_color = "green"
+        } else {
+          $title_color = "red"
+        }
+        $date = (Get-Date).ToString("yyyy-MM-dd")
+        $link_action = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+        $link_artifact = "${{ steps.artifact-upload-step.outputs.artifact-url }}"
+        $commit = "${{ env.commit }}"
+        $json_str = @"
+        {"msg_type": "interactive","card": {"type": "template","data": {"template_id": "AAqBkUVXyqaTs","template_version_name": "1.0.4","template_variable": {"title": "$title","title_color": "$title_color","date": "$date","link_action": "$link_action","link_artifact": "$link_artifact","commit": "$commit"}}}}
+        "@
+        echo "json_str=$json_str" >> $env:GITHUB_ENV
+
+    - name: feishu-bot
+      if: always()
+      uses: Rollingegg/feishu-robot-action@v1
+      with:
+        uuid: ${{ secrets.WEBHOOK_ID }}
+        json: ${{ env.json_str }}
