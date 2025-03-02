@@ -1,0 +1,97 @@
+name: test s3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-14]
+    permissions:
+      contents: write
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        brew install -q flex gperf gnu-tar xz gsed ninja ccache
+        HOMEBREW_PREFIX=$(brew --prefix)
+        echo $HOMEBREW_PREFIX
+        echo "$HOMEBREW_PREFIX/opt/flex/bin" >> $GITHUB_PATH
+
+        # wget -q https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2-darwin.tar.gz -O ccache.tar.gz
+        # mkdir ccache && tar -xJf ccache.tar.gz --strip-components=1 -C ccache && cp ccache/ccache /usr/local/bin
+
+    - uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.2'
+
+    - name: Download and extract source
+      run: |
+        arch=$(echo "$RUNNER_ARCH" | tr '[:upper:]' '[:lower:]')
+        cache_key="ccache-${{ runner.os }}-${arch}"
+        echo "arch=$arch" >> $GITHUB_ENV
+        echo "cache_key=$cache_key" >> $GITHUB_ENV
+        if [ "$arch" = "x64" ]; then
+            depsUrl="${{ vars.DEPS_MAC_X64 }}"
+        elif [ "$arch" = "arm64" ]; then
+            depsUrl="${{ vars.DEPS_MAC_ARM64 }}"
+        else
+            echo "Unsupported architecture: $arch"
+            exit 1
+        fi
+        wget -q $depsUrl -O deps.tar.xz > /dev/null 2>&1
+        aws s3 cp s3://dolphin/source/dolphin.tar.xz ./ --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+        tar -xJf dolphin.tar.xz 2>&1
+        tar -xJf deps.tar.xz -C dolphin > /dev/null 2>&1
+        echo "commit=$(cat dolphin/version)" >> $GITHUB_ENV
+        mv dolphin/dolphin_config.cmake dolphin/cmake/dolphin_config.cmake || true
+
+    - name: Cache from S3
+      run: |
+        if aws s3api head-object --bucket dolphin --key cache/${{ env.cache_key }}.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} > /dev/null 2>&1; then
+          echo "Cache exists in S3, downloading..."
+          aws s3 cp s3://dolphin/cache/${{ env.cache_key }}.tzst ccache.tzst --endpoint-url ${{ secrets.ENDPOINT_URL }} --no-progress
+          gtar -I "zstd -d" -xf ccache.tzst
+        else
+          echo "Cache does not exist in S3"
+        fi
+
+    - name: Setup ccache
+      run: |
+        ccache --set-config=cache_dir="${GITHUB_WORKSPACE}/.ccache"
+        ccache -sv
+
+    - name: Compile
+      run: |
+        cd dolphin
+        mkdir build
+        cd build
+        ccache --set-config=debug=true
+        ccache --set-config=debug_dir="${GITHUB_WORKSPACE}/clog"
+        cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        ninja
+        ninja install
+
+    - name: Cleanup cache
+      run: |
+        ccache -sv
+        ccache --evict-older-than 1d
+        ccache -sv
+
+    - name: Setup Rclone
+      uses: AnimMouse/setup-rclone@v1
+      with:
+        rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+    - name: Upload cache to S3
+      run: |
+        gtar -I "zstd -T0 -6 -k" -cf log-${GITHUB_RUN_ID}.tzst ${GITHUB_WORKSPACE}/clog
+        rclone copyto log-${GITHUB_RUN_ID}.tzst r2:dolphin/log/log-${GITHUB_RUN_ID}.tzst || true
